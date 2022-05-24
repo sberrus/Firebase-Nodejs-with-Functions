@@ -80,6 +80,24 @@ exports.crearAutor = functions.https.onCall((data, context) => {
             });
     });
 });
+exports.eliminarRoles = functions.https.onCall((data, context) => {
+    if (context.auth?.token.admin !== true) {
+        return {
+            error: "No cuenta con los permisos para realizar esta acción",
+        };
+    }
+
+    return auth.getUserByEmail(data.email).then((user) => {
+        return auth
+            .setCustomUserClaims(user.uid, {author: false, admin: false})
+            .then(() => {
+                return {message: "El usuario ahora es invitado"};
+            })
+            .catch((error) => {
+                return {error};
+            });
+    });
+});
 exports.eliminarAuthor = functions.https.onCall((data: {email: string}, context) => {
     if (context.auth?.token.admin !== true || context.auth?.token.author !== true) {
         return {
