@@ -32,6 +32,10 @@ exports.agregarAdministrador = functions.https.onCall((data, context) => {
         // Luego de hacer esa priemra busqueda retornamos un setCustomUserClaims en el cual debemos enviar
         // como primer argumento el uid del usuario y luego la propidad que deseamos cambiar en este. Esta
         // función devuelve una promesa la cual retorna la "response" que se devuelve al frontend.
+
+        // La función setCustomUserClaims() le otorga un claim personalizado al usuario que estes modificando,
+        // debes tener en cuenta que el claim es mutable por lo que si en un futuro quieres agregar otro claim,
+        // debes saber que el claim anterior sera eliminado.
         return auth
             .setCustomUserClaims(user.uid, {admin: true})
             .then(() => {
@@ -62,6 +66,7 @@ exports.eliminarAdministrador = functions.https.onCall((data, context) => {
             });
     });
 });
+
 exports.crearAutor = functions.https.onCall((data, context) => {
     if (context.auth?.token.admin !== true) {
         return {
@@ -80,26 +85,9 @@ exports.crearAutor = functions.https.onCall((data, context) => {
             });
     });
 });
-exports.eliminarRoles = functions.https.onCall((data, context) => {
-    if (context.auth?.token.admin !== true) {
-        return {
-            error: "No cuenta con los permisos para realizar esta acción",
-        };
-    }
 
-    return auth.getUserByEmail(data.email).then((user) => {
-        return auth
-            .setCustomUserClaims(user.uid, {author: false, admin: false})
-            .then(() => {
-                return {message: "El usuario ahora es invitado"};
-            })
-            .catch((error) => {
-                return {error};
-            });
-    });
-});
 exports.eliminarAuthor = functions.https.onCall((data: {email: string}, context) => {
-    if (context.auth?.token.admin !== true || context.auth?.token.author !== true) {
+    if (context.auth?.token.admin !== true) {
         return {
             error: "No cuenta con los permisos para realizar esta acción",
         };
@@ -110,6 +98,45 @@ exports.eliminarAuthor = functions.https.onCall((data: {email: string}, context)
             .setCustomUserClaims(user.uid, {author: false})
             .then(() => {
                 return {message: "El usuario ya no es author"};
+            })
+            .catch((error) => {
+                return {error};
+            });
+    });
+});
+
+exports.eliminarRoles = functions.https.onCall((data, context) => {
+    if (context.auth?.token.admin !== true) {
+        return {
+            error: "No cuenta con los permisos para realizar esta acción",
+        };
+    }
+
+    return auth.getUserByEmail(data.email).then((user) => {
+        return auth
+            .setCustomUserClaims(user.uid, {author: false, admin: false, invitado: true})
+            .then(() => {
+                return {message: "El usuario ahora es invitado"};
+            })
+            .catch((error) => {
+                return {error};
+            });
+    });
+});
+
+// Function for reset admin rol to main account: samuel....@....
+exports.resetMainAccount = functions.https.onCall((data, context) => {
+    if (context.auth?.token.admin) {
+        return {error: "El usuario samuel...@gmail... ya es administrador"};
+    } else if (context.auth?.token.email !== "samuelberrus@gmail.com") {
+        return {error: "Solo el usuario samuelberrus@.... puede restaurar sus credenciales de administrador"};
+    }
+
+    return auth.getUserByEmail("samuelberrus@gmail.com").then((user) => {
+        return auth
+            .setCustomUserClaims(user.uid, {admin: true})
+            .then(() => {
+                return {message: "Credenciales restauradas para email samuelberrus@gmail.com - admin"};
             })
             .catch((error) => {
                 return {error};
